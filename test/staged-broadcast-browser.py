@@ -10,7 +10,7 @@ import os
 from pathlib import Path
 import shutil
 import tempfile
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import expect, sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = Path(os.environ.get('BROADCAST_TEST_OUTPUT', ROOT / 'test-results/staged-broadcast'))
@@ -107,7 +107,9 @@ def run(browser, base):
     assert main.frame_locator('#program-preview').locator('audio').evaluate_all('nodes=>nodes.every(node=>node.paused)')
     shot(live, '04-second-song')
     draw_phase(live, 'complete', 1)
-    assert not main.locator('[data-production-next]').is_disabled()
+    # OBS and the control toolbar refresh on separate clock callbacks.
+    # Wait for the control page too; OBS completion cannot guarantee its DOM is current.
+    expect(main.locator('[data-production-next]')).to_be_enabled(timeout=5000)
     check('Four unbanned songs roll, first song previews, three remaining songs roll, second song previews; master volume and silent staff preview agree')
     video = live.video
     video_context.close()
